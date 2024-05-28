@@ -1,17 +1,19 @@
 RK_VERSION := 6.0.1
 
 ifndef KP_DIR
-    KP_DIR = ../KernelPatch
+    KP_DIR = ../..
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
+ANDROID_NDK_LATEST_HOME := /home/tuzi/PATH/android-ndk-r25c
 NDK_BIN_DIR := toolchains/llvm/prebuilt/$(OS_NAME)-$(MACHINE)/bin
 ifdef ANDROID_NDK_LATEST_HOME
     NDK_PATH ?= $(ANDROID_NDK_LATEST_HOME)/$(NDK_BIN_DIR)
 else ifdef ANDROID_NDK
     NDK_PATH ?= $(ANDROID_NDK)/$(NDK_BIN_DIR)
 endif
+# ndkr25
 
 ifdef TARGET_COMPILE
     CC := $(TARGET_COMPILE)gcc

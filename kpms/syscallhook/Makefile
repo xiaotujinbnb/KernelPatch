@@ -6,7 +6,7 @@ endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
-ANDROID_NDK_LATEST_HOME := /home/tuzi/android-ndk-r25c
+ANDROID_NDK_LATEST_HOME := /home/tuzi/PATH/android-ndk-r25c
 NDK_BIN_DIR := toolchains/llvm/prebuilt/$(OS_NAME)-$(MACHINE)/bin
 ifdef ANDROID_NDK_LATEST_HOME
     NDK_PATH ?= $(ANDROID_NDK_LATEST_HOME)/$(NDK_BIN_DIR)

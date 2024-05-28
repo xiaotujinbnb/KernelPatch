@@ -3,7 +3,7 @@ ifndef TARGET_COMPILE
 endif
 
 ifndef KP_DIR
-    KP_DIR = ../KernelPatch
+    KP_DIR = ../..
 endif
 
 

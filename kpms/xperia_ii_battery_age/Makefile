@@ -1,9 +1,10 @@
+TARGET_COMPILE = /home/tuzi/PATH/arrch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 ifndef TARGET_COMPILE
     $(error TARGET_COMPILE not set)
 endif
 
 ifndef KP_DIR
-    KP_DIR = ../KernelPatch
+    KP_DIR = ../..
 endif
 
 
