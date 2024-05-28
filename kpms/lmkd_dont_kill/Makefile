@@ -1,19 +1,17 @@
-DKF_VERSION := 1.0.0
+LDK_VERSION := 1.0.0
 
 ifndef KP_DIR
-    KP_DIR = ../..
+    KP_DIR = ../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
-ANDROID_NDK_LATEST_HOME := /home/tuzi/PATH/android-ndk-r25c
 NDK_BIN_DIR := toolchains/llvm/prebuilt/$(OS_NAME)-$(MACHINE)/bin
 ifdef ANDROID_NDK_LATEST_HOME
     NDK_PATH ?= $(ANDROID_NDK_LATEST_HOME)/$(NDK_BIN_DIR)
 else ifdef ANDROID_NDK
     NDK_PATH ?= $(ANDROID_NDK)/$(NDK_BIN_DIR)
 endif
-# ndkr25
 
 ifdef TARGET_COMPILE
     CC := $(TARGET_COMPILE)gcc
@@ -23,24 +21,24 @@ else ifdef NDK_PATH
     LD := $(NDK_PATH)/ld.lld
 endif
 
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DDKF_VERSION=\"$(DKF_VERSION)$(DKF_VER)\"
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DLDK_VERSION=\"$(LDK_VERSION)$(LDK_VER)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := hello.o
+objs := lmkd_dont_kill.o
 
-all: hello_$(DKF_VERSION).kpm
+all: lmkd_dont_kill_$(LDK_VERSION).kpm
 
 debug: CFLAGS += -DDEBUG
-debug: DKF_VER := _d
-debug: hello_$(DKF_VERSION)_debug.kpm
+debug: LDK_VER := _d
+debug: lmkd_dont_kill_$(LDK_VERSION)_debug.kpm
 
-hello_$(DKF_VERSION).kpm: ${objs}
+lmkd_dont_kill_$(LDK_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-hello_$(DKF_VERSION)_debug.kpm: ${objs}
+lmkd_dont_kill_$(LDK_VERSION)_debug.kpm: ${objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c

@@ -6,7 +6,7 @@ endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
-ANDROID_NDK_LATEST_HOME := /home/tuzi/PATH/android-ndk-r25c
+ANDROID_NDK_LATEST_HOME := /home/tuzi/android-ndk-r25c
 NDK_BIN_DIR := toolchains/llvm/prebuilt/$(OS_NAME)-$(MACHINE)/bin
 ifdef ANDROID_NDK_LATEST_HOME
     NDK_PATH ?= $(ANDROID_NDK_LATEST_HOME)/$(NDK_BIN_DIR)
@@ -29,18 +29,18 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := hello.o
+objs := tuzihook.o
 
-all: hello_$(DKF_VERSION).kpm
+all: tuzihook_$(DKF_VERSION).kpm
 
 debug: CFLAGS += -DDEBUG
 debug: DKF_VER := _d
-debug: hello_$(DKF_VERSION)_debug.kpm
+debug: tuzihook_$(DKF_VERSION)_debug.kpm
 
-hello_$(DKF_VERSION).kpm: ${objs}
+tuzihook_$(DKF_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-hello_$(DKF_VERSION)_debug.kpm: ${objs}
+tuzihook_$(DKF_VERSION)_debug.kpm: ${objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c

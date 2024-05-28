@@ -12,10 +12,10 @@
 #include <linux/string.h>
 #include <asm/current.h>
 
-KPM_NAME("kpm-syscall-hook-demo");
-KPM_VERSION("1.0.0");
+KPM_NAME("kpm-syscall-hook-tuzi");
+KPM_VERSION("1.0.1");
 KPM_LICENSE("GPL v2");
-KPM_AUTHOR("bmax121");
+KPM_AUTHOR("tuzi");
 KPM_DESCRIPTION("KernelPatch Module System Call Hook Example");
 
 const char *margs = 0;
@@ -69,26 +69,24 @@ void after_openat_1(hook_fargs4_t *args, void *udata)
     pr_info("hook_chain_1 after openat task: %llx\n", args->local.data0);
 }
 
-
-//模块加载时执行
+//模块安装时执行
 static long syscall_hook_demo_init(const char *args, const char *event, void *__user reserved)
 {
-    
     pr_info("syscall_hook init, args: %s\n", args);
 
-    //模块加载时执行 没必要重复获取函数的地址
-     __task_pid_nr_ns = (typeof(__task_pid_nr_ns))kallsyms_lookup_name("__task_pid_nr_ns"); // 通过kallsyms 函数获取 task_pid的函数指针
-    pr_info("kernel function __task_pid_nr_ns addr: %llx\n", __task_pid_nr_ns);
 
+    //通过kallsyms 获取 __task_pid_nr_ns 函数的地址    kallsyms 中存储了所有系统函数的导出表
+    __task_pid_nr_ns = (typeof(__task_pid_nr_ns))kallsyms_lookup_name("__task_pid_nr_ns");
+    pr_info("kernel function __task_pid_nr_ns addr: %llx\n", __task_pid_nr_ns);
     return 0;
 }
 
-//模块传入参数时执行
 static long syscall_hook_control0(const char *args, char *__user out_msg, int outlen)
 {
-    margs = args; // 获取传入的参数
-    pr_info("kpm-syscall-hook-demo init ..., args: %s\n", margs); 
-    
+    margs = args;
+    pr_info("kpm-syscall-hook-demo init ..., args: %s\n", margs);
+
+
     if (!margs) {
         pr_warn("no args specified, skip hook\n");
         return 0;
@@ -99,7 +97,7 @@ static long syscall_hook_control0(const char *args, char *__user out_msg, int ou
     if (!strcmp("function_pointer_hook", margs)) {
         pr_info("function pointer hook ...");
         hook_type = FUNCTION_POINTER_CHAIN;
-        //
+        // fp_hook_syscalln(int nr, int narg, void *before, void *after, void *udata)
         err = fp_hook_syscalln(__NR_openat, 4, before_openat_0, 0, 0);
         if (err) goto out;
         err = fp_hook_syscalln(__NR_openat, 4, before_openat_1, after_openat_1, &open_counts);
@@ -113,8 +111,6 @@ static long syscall_hook_control0(const char *args, char *__user out_msg, int ou
     }
 
 out:
-
-
     if (err) {
         pr_err("hook openat error: %d\n", err);
     } else {
@@ -124,7 +120,6 @@ out:
     return 0;
 }
 
-//模块卸载时执行
 static long syscall_hook_demo_exit(void *__user reserved)
 {
     pr_info("kpm-syscall-hook-demo exit ...\n");
@@ -139,6 +134,9 @@ static long syscall_hook_demo_exit(void *__user reserved)
     return 0;
 }
 
-KPM_INIT(syscall_hook_demo_init);
-KPM_CTL0(syscall_hook_control0);
+//模块安装
+KPM_INIT(syscall_hook_demo_init); 
+//模块传入参数
+KPM_CTL0(syscall_hook_control0); 
+//模块卸载
 KPM_EXIT(syscall_hook_demo_exit);

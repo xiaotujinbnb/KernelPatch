@@ -288,6 +288,7 @@ static inline hook_err_t hook_wrap1(void *func, hook_chain1_callback before, hoo
     return hook_wrap(func, 1, before, after, udata);
 }
 
+//inline hook
 static inline hook_err_t hook_wrap2(void *func, hook_chain2_callback before, hook_chain2_callback after, void *udata)
 {
     return hook_wrap(func, 2, before, after, udata);

@@ -1,3 +1,4 @@
+TARGET_COMPILE = /home/tuzi/PATH/arrch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 ifndef TARGET_COMPILE
     $(error TARGET_COMPILE not set)
 endif
@@ -9,7 +10,7 @@ LD = $(TARGET_COMPILE)ld
 AS = $(TARGET_COMPILE)as
 OBJCOPY = $(TARGET_COMPILE)objcopy
 
-CFLAGS += -Wall -fno-builtin -std=gnu11 -nostdinc
+CFLAGS += -Wall -fno-builtin -std=gnu11 -nostdinc 
 CFLAGS += -g
 
 ifdef DEBUG

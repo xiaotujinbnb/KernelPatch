@@ -56,6 +56,15 @@ static inline void *syscall_argn_p(void *fdata_args, int n)
     return syscall_args(fdata_args) + n;
 }
 
+/**
+ * nr 系统调用号
+ * narg 参数列表长度
+ * before 函数进入
+ * after 函数退出
+ * udata
+ * 
+ * fp hook 是替换函数指针，system-call table 是函数指针表
+*/   
 static inline hook_err_t fp_hook_syscalln(int nr, int narg, void *before, void *after, void *udata)
 {
     uintptr_t fp_addr = (uintptr_t)(sys_call_table + nr);
@@ -63,6 +72,11 @@ static inline hook_err_t fp_hook_syscalln(int nr, int narg, void *before, void *
     return fp_hook_wrap(fp_addr, narg, before, after, udata);
 }
 
+/**
+ * nr 系统调用号
+ * before 函数进入
+ * after 函数退出
+*/   
 static inline void fp_unhook_syscall(int nr, void *before, void *after)
 {
     uintptr_t fp_addr = (uintptr_t)(sys_call_table + nr);
