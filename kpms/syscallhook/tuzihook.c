@@ -94,14 +94,14 @@ static long syscall_hook_control0(const char *args, char *__user out_msg, int ou
 
     hook_err_t err = HOOK_NO_ERR;
 
-    if (!strcmp("function_pointer_hook", margs)) {
+    if (!strcmp("1", margs)) {
         pr_info("function pointer hook ...");
         hook_type = FUNCTION_POINTER_CHAIN;
         // fp_hook_syscalln(int nr, int narg, void *before, void *after, void *udata)
         err = fp_hook_syscalln(__NR_openat, 4, before_openat_0, 0, 0);
         if (err) goto out;
         err = fp_hook_syscalln(__NR_openat, 4, before_openat_1, after_openat_1, &open_counts);
-    } else if (!strcmp("inline_hook", margs)) {
+    } else if (!strcmp("2", margs)) {
         pr_info("inline hook ...");
         hook_type = INLINE_CHAIN;
         err = inline_hook_syscalln(__NR_openat, 4, before_openat_0, 0, 0);
