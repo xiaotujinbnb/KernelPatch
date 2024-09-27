@@ -31,18 +31,18 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := netlink.o
+objs := kpm_read.o
 
-all: netlink_$(DKF_VERSION).kpm
+all: kpm_read_$(DKF_VERSION).kpm
 
 debug: CFLAGS += -DDEBUG
 debug: DKF_VER := _d
-debug: netlink_$(DKF_VERSION)_debug.kpm
+debug: kpm_read_$(DKF_VERSION)_debug.kpm
 
-netlink_$(DKF_VERSION).kpm: ${objs}
+kpm_read_$(DKF_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-netlink_$(DKF_VERSION)_debug.kpm: ${objs}
+kpm_read_$(DKF_VERSION)_debug.kpm: ${objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c
