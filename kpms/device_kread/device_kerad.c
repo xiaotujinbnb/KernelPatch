@@ -1,10 +1,9 @@
 #include <compiler.h>
 #include <kpmodule.h>
 #include <linux/printk.h>
-#include <linux/uio.h>
+//#include <linux/uio.h>
 #include <uapi/asm-generic/unistd.h>
 #include <linux/uaccess.h>
-
 #include <linux/mm_types.h>
 #include <linux/errno.h>
 #include <linux/sched/mm.h>
@@ -16,10 +15,13 @@
 #include <linux/kallsyms.h>
 #include <linux/fs.h>
 #include <stdarg.h>
+
+#include "device_kerad.h"
+
 KPM_NAME("kpmdevice");
 KPM_VERSION("1.0.0");
 KPM_LICENSE("GPL v2");
-KPM_AUTHOR("溺");
+KPM_AUTHOR("tuzi");
 KPM_DESCRIPTION("kpm create device \n");
 
 #define GET_MAJOR(version) (((version) >> 16) & 0xFF)
@@ -28,8 +30,11 @@ KPM_DESCRIPTION("kpm create device \n");
 #define bits(n, high, low) (((n) << (63u - (high))) >> (63u - (high) + (low)))
 
 
+#define CMD_IOCTL 226  // 定义一个 ioctl 命令
 
-#define DEVICE_NAME "my_misc_device"
+
+
+#define DEVICE_NAME "tuzi_misc_device"
 
 
 
@@ -43,15 +48,15 @@ KPM_DESCRIPTION("kpm create device \n");
 
 
 struct miscdevice  {
-	int minor;
-	const char *name;
-	const struct file_operations *fops;
-	struct list_head list;
-	struct device *parent;
-	struct device *this_device;
-	const struct attribute_group **groups;
-	const char *nodename;
-	umode_t mode;
+	int minor;  // 设备的次设备号，用于标识该设备。通常使用 MISC_DYNAMIC_MINOR 动态分配。
+	const char *name;  // 设备名称，该名称用于在 /dev 目录下创建对应的设备节点。
+	const struct file_operations *fops;  // 指向该设备的文件操作函数集，用于处理打开、读取、写入等操作。
+	struct list_head list;  // 用于将该设备插入到杂项设备列表中的链表节点。
+	struct device *parent;  // 设备的父设备指针（如果有父设备），通常用于设备层级关系的组织。
+	struct device *this_device;  // 指向表示该设备的内核设备结构体 `struct device`，用于表示该设备的属性。
+	const struct attribute_group **groups;  // 该设备的属性组指针数组，用于 sysfs 中的设备属性配置。
+	const char *nodename;  // 设备节点的名称。如果不为 NULL，设备的节点名将基于这个字段而不是 `name` 字段。
+	umode_t mode;  // 设备节点的文件权限模式（如读、写权限），类似于 Unix 文件系统中的权限。
 };
 
 
@@ -87,15 +92,16 @@ static int my_misc_release(struct inode *inode, struct file *file)
 long dispatch_ioctl(struct file * file, unsigned int  cmd, unsigned long  arg)
 {
 	
-    // switch (cmd)
-    // {
-    // case /* constant-expression */ 1 :
-    //     /* code */
-    //     break;
+    switch (cmd)
+    {
+    case /* constant-expression */CMD_IOCTL :
+        /* code */ 
+        logkd("my_misc_device: received CMD_IOCTL_1\n");
+        break;
     
-    // default:
-    //     break;
-    // }
+    default:
+        break;
+    }
 	
 	
 	return 0;
@@ -121,7 +127,7 @@ misc_deregister_t misc_deregister_func;
 
 
 // 设备文件操作结构体
- struct file_operations my_fops = {
+  struct file_operations my_fops = {
     .owner = THIS_MODULE,
     .open = my_misc_open,
     .release = my_misc_release,
@@ -129,7 +135,7 @@ misc_deregister_t misc_deregister_func;
     //.compat_ioctl = dispatch_ioctl,
 };
 
-// 杂项设备结构体
+//杂项设备结构体
  struct miscdevice my_misc_device = {
     .minor = 255,                  // 动态分配次设备号
     .name = DEVICE_NAME,          // 设备名称
@@ -177,7 +183,7 @@ static long syscall_hook_demo_init(const char *args, const char *event, void *__
 static long syscall_hook_demo_exit(void *__user reserved)
 {
 
-     misc_deregister_func(&my_misc_device);
+    misc_deregister_func(&my_misc_device);
    
 
     logkd("my_misc_device: deregistered\n");

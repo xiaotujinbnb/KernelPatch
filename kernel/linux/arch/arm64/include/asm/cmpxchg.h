@@ -63,6 +63,8 @@ static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size
                      : "memory");
         break;
     default:
+
+    break;
         // BUILD_BUG();
     }
 
@@ -143,6 +145,7 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old, uns
         break;
 
     default:
+    break;
         // BUILD_BUG();
     }
 

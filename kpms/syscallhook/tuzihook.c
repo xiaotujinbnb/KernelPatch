@@ -49,6 +49,7 @@ void before_openat_0(hook_fargs4_t *args, void *udata)
         tgid = __task_pid_nr_ns(task, PIDTYPE_TGID, 0);
     }
 
+
     args->local.data0 = (uint64_t)task;
 
     pr_info("hook_chain_0 task: %llx, pid: %d, tgid: %d, openat dfd: %d, filename: %s, flag: %x, mode: %d\n", task, pid,

@@ -1,4 +1,6 @@
-RK_VERSION := 6.0.1
+MYKPM_VERSION := 6.0.10
+DKF_VERSION := 6.0.10
+
 
 ifndef KP_DIR
     KP_DIR = ../..
@@ -23,34 +25,28 @@ else ifdef NDK_PATH
     LD := $(NDK_PATH)/ld.lld
 endif
 
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DRK_VERSION=\"$(RK_VERSION)$(RK_VER)\"
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DDKF_VERSION=\"$(DKF_VERSION)$(DKF_VER)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := re_kernel.c
+objs := re_kernel.o
 
-all: base network
+all: re_kernel_$(DKF_VERSION).kpm
 
-base: re_kernel_$(RK_VERSION).kpm
+debug: CFLAGS += -DDEBUG
+debug: DKF_VER := _d
+debug: re_kernel_$(DKF_VERSION)_debug.kpm
 
-network: CFLAGS += -DCONFIG_NETWORK
-network: RK_VER := _n
-network: re_kernel_$(RK_VERSION)_network.kpm
+re_kernel_$(DKF_VERSION).kpm: ${objs}
+	${CC} -r -o $@ $^
 
-debug: CFLAGS += -DCONFIG_DEBUG
-debug: RK_VER := _d
-debug: re_kernel_$(RK_VERSION)_debug.kpm
+re_kernel_$(DKF_VERSION)_debug.kpm: ${objs}
+	${CC} -r -o $@ $^
 
-re_kernel_$(RK_VERSION).kpm: ${objs}
-	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
-
-re_kernel_$(RK_VERSION)_network.kpm: ${objs}
-	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
-
-re_kernel_$(RK_VERSION)_debug.kpm: ${objs}
-	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
+%.o: %.c
+	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
 
 .PHONY: clean
 clean:

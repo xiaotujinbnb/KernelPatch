@@ -1,63 +1,99 @@
-#include <linux/netlink.h>
-#include <linux/skbuff.h>
-#include <linux/net.h>              // 用于网络结构
-#include <linux/socket.h>           // 用于套接字操作
-#include <net/net_namespace.h>      // 用于网络命名空间
-#include <net/netlink.h>
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/string.h>
+#include <linux/types.h>
+#include <net/sock.h>
+#include <linux/netlink.h>
 
+#define NETLINK_TEST     30
+#define USER_PORT        100
+int netlink_count = 0;
+char netlink_kmsg[30];
 
-#define NETLINK_MY_MODULE 30
-#define USER_PORT 1
+struct sock *nlsk = NULL;
+extern struct net init_net;
 
-static struct sock *netlink_sock = NULL;
+int send_usrmsg(char *pbuf, uint16_t len)
+{
+    struct sk_buff *nl_skb;
+    struct nlmsghdr *nlh;
 
-static int send_netlink_message(char *msg, uint16_t len) {
-    struct sk_buff *skbuffer;
-    struct nlmsghdr *nlhdr;
+    int ret;
 
-    skbuffer = nlmsg_new(len, GFP_ATOMIC);
-    if (!skbuffer) {
-        printk(KERN_ERR "netlink alloc failure.\n");
+    //Create sk_buff using nlmsg_new().
+    nl_skb = nlmsg_new(len, GFP_ATOMIC);
+    if(!nl_skb)
+    {
+        printk("netlink alloc failure\n");
         return -1;
     }
 
-    nlhdr = nlmsg_put(skbuffer, 0, 0, NLMSG_DONE, len, 0);
-    if (!nlhdr) {
-        printk(KERN_ERR "nlmsg_put failure.\n");
-        nlmsg_free(skbuffer);
+    //Set up nlmsghdr.
+    nlh = nlmsg_put(nl_skb, 0, 0, NETLINK_TEST, len, 0);
+    if(nlh == NULL)
+    {
+        printk("nlmsg_put failaure \n");
+        nlmsg_free(nl_skb);  //If nlmsg_put() failed, nlmsg_free() will free sk_buff.
         return -1;
     }
 
-    memcpy(nlmsg_data(nlhdr), msg, len);
-    return netlink_unicast(netlink_sock, skbuffer, USER_PORT, MSG_DONTWAIT);
+    //Copy pbuf to nlmsghdr payload.
+    memcpy(nlmsg_data(nlh), pbuf, len);
+    ret = netlink_unicast(nlsk, nl_skb, USER_PORT, MSG_DONTWAIT);
+
+    return ret;
 }
 
-static int __init my_module_init(void) {
-    struct netlink_kernel_cfg cfg = {
-        .input = NULL,
-    };
+static void netlink_rcv_msg(struct sk_buff *skb)
+{
+    struct nlmsghdr *nlh = NULL;
+    char *umsg = NULL;
+    //char *kmsg = "hello users!!!";
+    char *kmsg;
 
-    netlink_sock = netlink_kernel_create(&init_net, NETLINK_MY_MODULE, &cfg);
-    if (!netlink_sock) {
-        printk(KERN_ERR "Failed to create netlink socket.\n");
-        return -1;
+    if(skb->len >= nlmsg_total_size(0))
+    {
+        netlink_count++;
+    snprintf(netlink_kmsg, sizeof(netlink_kmsg), "hello users count=%d", netlink_count);
+    kmsg = netlink_kmsg;
+        nlh = nlmsg_hdr(skb);  //Get nlmsghdr from sk_buff.
+        umsg = NLMSG_DATA(nlh); //Get payload from nlmsghdr.
+        if(umsg)
+        {
+            printk("kernel recv from user: %s\n", umsg);
+            send_usrmsg(kmsg, strlen(kmsg));
+        }
     }
+}
 
-    printk(KERN_INFO "Netlink socket created.\n");
+struct netlink_kernel_cfg cfg = { 
+        .input  = netlink_rcv_msg, /* set recv callback */
+};  
+
+__init int netlink_test_init(void)
+{
+    /* Create netlink socket */
+    nlsk = (struct sock *)netlink_kernel_create(&init_net, NETLINK_TEST, &cfg);
+    if(nlsk == NULL)
+    {   
+        printk("netlink_kernel_create error !\n");
+        return -1; 
+    }   
+    printk("netlink_test_init\n");
+    
     return 0;
 }
 
-static void __exit my_module_exit(void) {
-    netlink_kernel_release(netlink_sock);
-    printk(KERN_INFO "Netlink socket released.\n");
+__exit void netlink_test_exit(void)
+{
+    if (nlsk){
+        netlink_kernel_release(nlsk); /* release ..*/
+        nlsk = NULL;
+    }   
+    printk("netlink_test_exit!\n");
 }
 
-module_init(my_module_init);
-module_exit(my_module_exit);
-MODULE_AUTHOR("Linux");
-MODULE_DESCRIPTION("Linux default module");
+module_init(netlink_test_init);
+module_exit(netlink_test_exit);
+
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("netlink test");

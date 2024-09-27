@@ -31,18 +31,18 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := device_kerad.o
+objs := netlink.o
 
-all: device_kerad_$(DKF_VERSION).kpm
+all: netlink_$(DKF_VERSION).kpm
 
 debug: CFLAGS += -DDEBUG
 debug: DKF_VER := _d
-debug: device_kerad_$(DKF_VERSION)_debug.kpm
+debug: netlink_$(DKF_VERSION)_debug.kpm
 
-device_kerad_$(DKF_VERSION).kpm: ${objs}
+netlink_$(DKF_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-device_kerad_$(DKF_VERSION)_debug.kpm: ${objs}
+netlink_$(DKF_VERSION)_debug.kpm: ${objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c

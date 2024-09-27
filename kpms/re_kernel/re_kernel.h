@@ -1,250 +1,385 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
-/*
- * Copyright (C) 2024 bmax121. All Rights Reserved.
- * Copyright (C) 2024 lzghzr. All Rights Reserved.
- */
-#ifndef __RE_UTILS_H
-#define __RE_UTILS_H
+#ifndef __RE_KERNEL_H
+#define __RE_KERNEL_H
 
-#include <hook.h>
-#include <ksyms.h>
-#include <linux/cred.h>
-#include <linux/sched.h>
-#include <uapi/asm-generic/errno.h>
+#include <ktypes.h>
 
-#define bits32(n, high, low) ((uint32_t)((n) << (31u - (high))) >> (31u - (high) + (low)))
-#define bit(n, st) (((n) >> (st)) & 1)
-#define sign64_extend(n, len) \
-  (((uint64_t)((n) << (63u - (len - 1))) >> 63u) ? ((n) | (0xFFFFFFFFFFFFFFFF << (len))) : n)
+#define THIS_MODULE ((struct module *)0)
 
-typedef uint32_t inst_type_t;
-typedef uint32_t inst_mask_t;
+#define ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
+#define ALIGN(x, a) ALIGN_MASK(x, (typeof(x))(a)-1)
 
-#define INST_ADD_64 0x91000000u
-#define INST_ADD_64_Rn_X0 0x91000000u
-#define INST_ADD_64_Rn_X19_Rd_X0 0x91000260u
-#define INST_ADD_64_Rd_X0 0x91000000u
-#define INST_ADD_64_Rd_X1 0x91000001u
-#define INST_LDR_32_ 0xB9400000u
-#define INST_LDR_32_X0 0xB9400000u
-#define INST_LDR_64_ 0xF9400000u
-#define INST_LDR_64_X0 0xF9400000u
-#define INST_LDR_64_SP 0xF94003E0u
-#define INST_LDRB 0x39400000u
-#define INST_LDRB_X0 0x39400000u
-#define INST_LDRH 0x79400000u
-#define INST_LDRH_X0 0x79400000u
-#define INST_LDRSH 0x79800000u
-#define INST_LDRSH_64_ 0x79800000u
-#define INST_MOV_Rm_4_WZR 0x2A0403E0u
-#define INST_STR_Rn_SP_Rt_4 0xB90003E4u
-#define INST_STR_32_x0 0xB9000000u
-#define INST_CBZ 0x34000000
-#define INST_CBNZ 0x35000000
-#define INST_TBZ 0x36000000u
-#define INST_TBNZ 0x37000000u
-#define INST_TBNZ_5 0x37280000u
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define MASK_ADD_64 0xFF800000u
-#define MASK_ADD_64_Rn_X0 0xFF8003E0u
-#define MASK_ADD_64_Rn_X19_Rd_X0 0xFF8003FFu
-#define MASK_ADD_64_Rd_X0 0xFF80001Fu
-#define MASK_ADD_64_Rd_X1 0xFF80001Fu
-#define MASK_LDR_32_ 0xFFC00000u
-#define MASK_LDR_32_X0 0xFFC003E0u
-#define MASK_LDR_64_ 0xFFC00000u
-#define MASK_LDR_64_X0 0xFFC003E0u
-#define MASK_LDR_64_SP 0xFFC003E0u
-#define MASK_LDRB 0xFFC00000u
-#define MASK_LDRB_X0 0xFFC003E0u
-#define MASK_LDRH 0xFFC00000u
-#define MASK_LDRH_X0 0xFFC003E0u
-#define MASK_LDRSH 0xFF800000u
-#define MASK_LDRSH_64_ 0xFFC00000u
-#define MASK_MOV_Rm_4_WZR 0x7FFFFFE0u
-#define MASK_STR_Rn_SP_Rt_4 0xBFC003E4u
-#define MASK_STR_32_x0 0xFFC003E0u
-#define MASK_CBZ 0x7F000000u
-#define MASK_CBNZ 0x7F000000u
-#define MASK_TBZ 0x7F000000u
-#define MASK_TBNZ 0x7F000000u
-#define MASK_TBNZ_5 0xFFF80000u
+// linux/sched/jobctl.h
+#define JOBCTL_TRAP_FREEZE_BIT 23
+#define JOBCTL_TRAP_FREEZE (1UL << JOBCTL_TRAP_FREEZE_BIT)
 
-#define ARM64_RET 0xD65F03C0
+// android/binder.c
+struct binder_alloc;
+struct binder_transaction_data;
 
-#define lookup_name(func)                                  \
-  func = 0;                                                \
-  func = (typeof(func))kallsyms_lookup_name(#func);        \
-  pr_info("kernel function %s addr: %llx\n", #func, func); \
-  if (!func)                                               \
-  {                                                        \
-    return -21;                                            \
-  }
+enum transaction_flags {
+  TF_ONE_WAY = 0x01,
+  TF_ROOT_OBJECT = 0x04,
+  TF_STATUS_CODE = 0x08,
+  TF_ACCEPT_FDS = 0x10,
+  TF_CLEAR_BUF = 0x20,
+  TF_UPDATE_TXN = 0x40,
+};
 
-#define hook_func(func, argv, before, after, udata)                         \
-  if (!func)                                                                \
-  {                                                                         \
-    return -22;                                                             \
-  }                                                                         \
-  hook_err_t hook_err_##func = hook_wrap(func, argv, before, after, udata); \
-  if (hook_err_##func)                                                      \
-  {                                                                         \
-    func = 0;                                                               \
-    pr_err("hook %s error: %d\n", #func, hook_err_##func);                  \
-    return -23;                                                             \
-  }                                                                         \
-  else                                                                      \
-  {                                                                         \
-    pr_info("hook %s success\n", #func);                                    \
-  }
+typedef atomic_t atomic_long_t;
+struct mutex {
+  atomic_long_t owner;
+  spinlock_t wait_lock;
+  // unknow
+};
+struct rb_node {
+  unsigned long __rb_parent_color;
+  struct rb_node* rb_right;
+  struct rb_node* rb_left;
+} __attribute__((aligned(sizeof(long))));
+struct rb_root {
+  struct rb_node* rb_node;
+};
 
-#define unhook_func(func)            \
-  if (func && !is_bad_address(func)) \
-  {                                  \
-    unhook(func);                    \
-    func = 0;                        \
-  }
+struct binder_work {
+  struct list_head entry;
+  enum binder_work_type {
+    BINDER_WORK_TRANSACTION = 1,
+    BINDER_WORK_TRANSACTION_COMPLETE,
+    BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT, // 6.1
+    BINDER_WORK_RETURN_ERROR,
+    BINDER_WORK_NODE,
+    BINDER_WORK_DEAD_BINDER,
+    BINDER_WORK_DEAD_BINDER_AND_CLEAR,
+    BINDER_WORK_CLEAR_DEATH_NOTIFICATION,
+  } type;
+};
+typedef __u64 binder_size_t;
+typedef __u64 binder_uintptr_t;
+struct binder_node {
+  int debug_id;
+  // spinlock_t lock; // harmony
+  // struct binder_work work;
+  // union {
+  //   struct rb_node rb_node;
+  //   struct hlist_node dead_node;
+  // };
+  // struct binder_proc* proc;
+  // struct hlist_head refs;
+  // int internal_strong_refs;
+  // int local_weak_refs;
+  // int local_strong_refs;
+  // int tmp_refs;
+  // binder_uintptr_t ptr;
+  // binder_uintptr_t cookie;
+  // struct {
+  //   u8 has_strong_ref : 1;
+  //   u8 pending_strong_ref : 1;
+  //   u8 has_weak_ref : 1;
+  //   u8 pending_weak_ref : 1;
+  // };
+  // struct {
+  //   u8 sched_policy : 2;
+  //   u8 inherit_rt : 1;
+  //   u8 accept_fds : 1;
+  //   u8 txn_security_ctx : 1;
+  //   u8 min_priority;
+  // };
+  // bool has_async_transaction;
+  // struct list_head async_todo;
+};
 
-#define task_real_uid(task)                                                                       \
-  ({                                                                                              \
-    struct cred *cred = *(struct cred **)((uintptr_t)task + task_struct_offset.real_cred_offset); \
-    kuid_t ___val = *(kuid_t *)((uintptr_t)cred + cred_offset.uid_offset);                        \
-    ___val;                                                                                       \
-  })
+struct binder_context {
+  struct binder_node* binder_context_mgr_node;
+  struct mutex context_mgr_node_lock;
+  // unknow
+};
+struct binder_alloc;
+struct binder_proc {
+  struct hlist_node proc_node;
+  struct rb_root threads;
+  struct rb_root nodes;
+  struct rb_root refs_by_desc;
+  struct rb_root refs_by_node;
+  struct list_head waiting_threads;
+  int pid;
+  struct task_struct* tsk;
+  // unknow
+};
 
-#define task_uid(task) task_real_uid(task)
-  // ({                                                                                         \
-  //   struct cred *cred = *(struct cred **)((uintptr_t)task + task_struct_offset.cred_offset); \
-  //   kuid_t ___val = *(kuid_t *)((uintptr_t)cred + cred_offset.uid_offset);                   \
-  //   ___val;                                                                                  \
-  // })
+struct binder_buffer {
+  struct list_head entry;
+  struct rb_node rb_node;
+  unsigned free : 1;
+  unsigned clear_on_free : 1; // 6.1
+  unsigned allow_user_free : 1;
+  unsigned async_transaction : 1;
+  unsigned oneway_spam_suspect : 1; // 6.1
+  // unsigned debug_id : 29;
+  unsigned debug_id : 27; // 6.1
+  struct binder_transaction* transaction;
+  struct binder_node* target_node;
+  size_t data_size;
+  size_t offsets_size;
+  size_t extra_buffers_size;
+  void __user* user_data;
+  int pid;
+};
 
-extern bool kfunc_def(freezing_slow_path)(struct task_struct* p);
-static inline bool freezing_slow_path(struct task_struct* p) {
-  kfunc_call(freezing_slow_path, p);
-  kfunc_not_found();
-  return false;
-}
+struct binder_priority {
+  unsigned int sched_policy;
+  int prio;
+};
+struct binder_transaction {
+  int debug_id;
+  struct binder_work work;
+  // struct binder_thread* from; // harmony
+  // pid_t from_pid; // 6.1
+  // pid_t from_tid; // 6.1
+  // struct binder_transaction* from_parent;
+  // struct binder_proc* to_proc;
+  // struct binder_thread* to_thread;
+  // struct binder_transaction* to_parent;
+  // unsigned need_reply : 1;
+  // struct binder_buffer* buffer;
+  // unsigned int code;
+  // unsigned int flags;
+  // struct binder_priority priority;
+  // struct binder_priority saved_priority;
+  // bool set_priority_called;
+};
 
-extern struct sk_buff* kfunc_def(__alloc_skb)(unsigned int size, gfp_t gfp_mask, int flags, int node);
-static inline struct sk_buff* alloc_skb(unsigned int size, gfp_t priority) {
-  kfunc_call(__alloc_skb, size, priority, 0, NUMA_NO_NODE);
-  kfunc_not_found();
-  return NULL;
-}
+struct wait_queue_head {
+  spinlock_t lock;
+  struct list_head head;
+};
+typedef struct wait_queue_head wait_queue_head_t;
+enum binder_stat_types {
+  BINDER_STAT_PROC,
+  BINDER_STAT_THREAD,
+  BINDER_STAT_NODE,
+  BINDER_STAT_REF,
+  BINDER_STAT_DEATH,
+  BINDER_STAT_TRANSACTION,
+  BINDER_STAT_TRANSACTION_COMPLETE,
+  BINDER_STAT_COUNT
+};
+struct binder_stats {
+  atomic_t br[18];
+  // atomic_t br[20]; // 6.1
+  atomic_t bc[19];
+  atomic_t obj_created[BINDER_STAT_COUNT];
+  atomic_t obj_deleted[BINDER_STAT_COUNT];
+};
 
-static inline int nlmsg_msg_size(int payload) {
-  return NLMSG_HDRLEN + payload;
-}
+struct binder_thread {
+  struct binder_proc* proc;
+  // unknow
+};
 
-static inline int nlmsg_total_size(int payload) {
-  return NLMSG_ALIGN(nlmsg_msg_size(payload));
-}
+// linux/netlink.h
+struct sk_buff;
+struct net;
+struct sock;
+struct netlink_kernel_cfg {
+  char unknow[0x30];
+};
 
-static inline void* nlmsg_data(const struct nlmsghdr* nlh) {
-  return (unsigned char*)nlh + NLMSG_HDRLEN;
-}
+struct nlmsghdr {
+  __u32 nlmsg_len;
+  __u16 nlmsg_type;
+  __u16 nlmsg_flags;
+  __u32 nlmsg_seq;
+  __u32 nlmsg_pid;
+};
+#define NLMSG_ALIGNTO 4U
+#define NLMSG_ALIGN(len) (((len) + NLMSG_ALIGNTO - 1) & ~(NLMSG_ALIGNTO - 1))
+#define NLMSG_HDRLEN ((int)NLMSG_ALIGN(sizeof(struct nlmsghdr)))
+#define NLMSG_LENGTH(len) ((len) + NLMSG_HDRLEN)
 
-static inline struct sk_buff* nlmsg_new(size_t payload, gfp_t flags) {
-  return alloc_skb(nlmsg_total_size(payload), flags);
-}
+// linux/gfp.h
+#define NUMA_NO_NODE (-1)
+#define ___GFP_HIGH 0x20u
+#define ___GFP_ATOMIC 0x80000u
+#define ___GFP_KSWAPD_RECLAIM 0x400000u
+#define __GFP_HIGH ((__force gfp_t)___GFP_HIGH)
+#define __GFP_ATOMIC ((__force gfp_t)___GFP_ATOMIC)
+#define __GFP_KSWAPD_RECLAIM ((__force gfp_t)___GFP_KSWAPD_RECLAIM)
+#define GFP_ATOMIC (__GFP_HIGH | __GFP_ATOMIC | __GFP_KSWAPD_RECLAIM)
 
-extern struct nlmsghdr* kfunc_def(__nlmsg_put)(struct sk_buff* skb, u32 portid, u32 seq, int type, int len, int flags);
-static inline struct nlmsghdr* nlmsg_put(struct sk_buff* skb, u32 portid, u32 seq, int type, int payload, int flags) {
-  kfunc_call(__nlmsg_put, skb, portid, seq, type, payload, flags);
-  kfunc_not_found();
-  return NULL;
-}
+// linux/fs.h
+struct kiocb;
+struct iov_iter;
+struct dir_context;
+struct poll_table_struct;
+struct vm_area_struct;
+struct file_lock;
+struct page;
+struct pipe_inode_info;
+struct seq_file;
+struct open_flags;
+struct file_operations {
+  char unknow[0x120];
+};
 
-extern void kfunc_def(kfree_skb)(struct sk_buff* skb);
-static inline void nlmsg_free(struct sk_buff* skb) {
-  kfunc_call_void(kfree_skb, skb);
-}
+// linux/schde.h
+#define PF_FROZEN 0x00010000
 
-extern int kfunc_def(netlink_unicast)(struct sock* ssk, struct sk_buff* skb, u32 portid, int nonblock);
-static inline int netlink_unicast(struct sock* ssk, struct sk_buff* skb, u32 portid, int nonblock) {
-  kfunc_call(netlink_unicast, ssk, skb, portid, nonblock);
-  kfunc_not_found();
-  return -ESRCH;
-}
+// uapi/asm/signal.h
+#define SIGQUIT 3
+#define SIGABRT 6
+#define SIGKILL 9
+#define SIGTERM 15
 
-extern struct sock* kfunc_def(__netlink_kernel_create)(struct net* net, int unit, struct module* module, struct netlink_kernel_cfg* cfg);
-static inline struct sock* netlink_kernel_create(struct net* net, int unit, struct netlink_kernel_cfg* cfg) {
-  kfunc_call(__netlink_kernel_create, net, unit, THIS_MODULE, cfg);
-  kfunc_not_found();
-  return NULL;
-}
+struct siginfo;
 
-extern void kfunc_def(netlink_kernel_release)(struct sock* sk);
-static inline void netlink_kernel_release(struct sock* sk) {
-  kfunc_call_void(netlink_kernel_release, sk);
-}
+// linux/socket.h
+#define MSG_DONTWAIT 0x40
 
-extern struct proc_dir_entry* kfunc_def(proc_mkdir)(const char* name, struct proc_dir_entry* parent);
-static inline struct proc_dir_entry* proc_mkdir(const char* name, struct proc_dir_entry* parent) {
-  kfunc_call(proc_mkdir, name, parent);
-  kfunc_not_found();
-  return NULL;
-}
+// linux/tracepoint-defs.h
+struct tracepoint;
 
-extern struct proc_dir_entry* kfunc_def(proc_create_data)(const char* name, umode_t mode, struct proc_dir_entry* parent, const struct file_operations* proc_fops, void* data);
-static inline struct proc_dir_entry* proc_create(const char* name, umode_t mode, struct proc_dir_entry* parent, const struct file_operations* proc_fops) {
-  kfunc_call(proc_create_data, name, mode, parent, proc_fops, NULL);
-  kfunc_not_found();
-  return NULL;
-}
+// net/tcp_states.h
+enum {
+  TCP_ESTABLISHED = 1,
+  TCP_SYN_SENT,
+  TCP_SYN_RECV,
+  TCP_FIN_WAIT1,
+  TCP_FIN_WAIT2,
+  TCP_TIME_WAIT,
+  TCP_CLOSE,
+  TCP_CLOSE_WAIT,
+  TCP_LAST_ACK,
+  TCP_LISTEN,
+  TCP_CLOSING,
+  TCP_NEW_SYN_RECV,
+  TCP_MAX_STATES
+};
 
-extern void kfunc_def(proc_remove)(struct proc_dir_entry* de);
-static inline void proc_remove(struct proc_dir_entry* de) {
-  kfunc_call_void(proc_remove, de);
-}
+enum {
+  TCPF_ESTABLISHED = (1 << TCP_ESTABLISHED),
+  TCPF_SYN_SENT = (1 << TCP_SYN_SENT),
+  TCPF_SYN_RECV = (1 << TCP_SYN_RECV),
+  TCPF_FIN_WAIT1 = (1 << TCP_FIN_WAIT1),
+  TCPF_FIN_WAIT2 = (1 << TCP_FIN_WAIT2),
+  TCPF_TIME_WAIT = (1 << TCP_TIME_WAIT),
+  TCPF_CLOSE = (1 << TCP_CLOSE),
+  TCPF_CLOSE_WAIT = (1 << TCP_CLOSE_WAIT),
+  TCPF_LAST_ACK = (1 << TCP_LAST_ACK),
+  TCPF_LISTEN = (1 << TCP_LISTEN),
+  TCPF_CLOSING = (1 << TCP_CLOSING),
+  TCPF_NEW_SYN_RECV = (1 << TCP_NEW_SYN_RECV),
+};
 
-extern void kfunc_def(seq_printf)(struct seq_file* m, const char* f, ...);
-static inline void seq_printf(struct seq_file* m, const char* f, ...) {
-  va_list args;
-  va_start(args, f);
-  kfunc(seq_printf)(m, f, args);
-  va_end(args);
-}
+// net/sock.h
+typedef __u32 __bitwise __portpair;
+typedef __u64 __bitwise __addrpair;
 
-extern int kfunc_def(single_open)(struct file* file, int (*show)(struct seq_file*, void*), void* data);
-static inline int single_open(struct file* file, int (*show)(struct seq_file*, void*), void* data) {
-  kfunc_call(single_open, file, show, data);
-  kfunc_not_found();
-  return -ESRCH;
-}
+struct sock_common {
+  union {
+    __addrpair skc_addrpair;
+    struct {
+      __be32 skc_daddr;
+      __be32 skc_rcv_saddr;
+    };
+  };
+  union {
+    unsigned int skc_hash;
+    __u16 skc_u16hashes[2];
+  };
+  union {
+    __portpair skc_portpair;
+    struct {
+      __be16 skc_dport;
+      __u16 skc_num;
+    };
+  };
+  unsigned short skc_family;
+  volatile unsigned char skc_state;
+  unsigned char skc_reuse : 4;
+  unsigned char skc_reuseport : 1;
+  unsigned char skc_ipv6only : 1;
+  unsigned char skc_net_refcnt : 1;
+  int skc_bound_dev_if;
+  union {
+    struct hlist_node skc_bind_node;
+    struct hlist_node skc_portaddr_node;
+  };
+  struct proto* skc_prot;
+  // unknow
+};
 
-extern kuid_t kfunc_def(sock_i_uid)(struct sock* sk);
-static inline kuid_t sock_i_uid(struct sock* sk) {
-  kfunc_call(sock_i_uid, sk);
-  kfunc_not_found();
-  return (kuid_t) { 0 };
-}
+struct sock {
+  struct sock_common __sk_common;
+#define sk_node __sk_common.skc_node
+#define sk_nulls_node __sk_common.skc_nulls_node
+#define sk_refcnt __sk_common.skc_refcnt
+#define sk_tx_queue_mapping __sk_common.skc_tx_queue_mapping
+#ifdef CONFIG_SOCK_RX_QUEUE_MAPPING
+#define sk_rx_queue_mapping __sk_common.skc_rx_queue_mapping
+#endif
 
-extern int kfunc_def(get_cmdline)(struct task_struct* task, char* buffer, int buflen);
-static inline int get_cmdline(struct task_struct* task, char* buffer, int buflen) {
-  kfunc_call(get_cmdline, task, buffer, buflen);
-  kfunc_not_found();
-  return -ESRCH;
-}
+#define sk_dontcopy_begin __sk_common.skc_dontcopy_begin
+#define sk_dontcopy_end __sk_common.skc_dontcopy_end
+#define sk_hash __sk_common.skc_hash
+#define sk_portpair __sk_common.skc_portpair
+#define sk_num __sk_common.skc_num
+#define sk_dport __sk_common.skc_dport
+#define sk_addrpair __sk_common.skc_addrpair
+#define sk_daddr __sk_common.skc_daddr
+#define sk_rcv_saddr __sk_common.skc_rcv_saddr
+#define sk_family __sk_common.skc_family
+#define sk_state __sk_common.skc_state
+#define sk_reuse __sk_common.skc_reuse
+#define sk_reuseport __sk_common.skc_reuseport
+#define sk_ipv6only __sk_common.skc_ipv6only
+#define sk_net_refcnt __sk_common.skc_net_refcnt
+#define sk_bound_dev_if __sk_common.skc_bound_dev_if
+#define sk_bind_node __sk_common.skc_bind_node
+#define sk_prot __sk_common.skc_prot
+#define sk_net __sk_common.skc_net
+#define sk_v6_daddr __sk_common.skc_v6_daddr
+#define sk_v6_rcv_saddr __sk_common.skc_v6_rcv_saddr
+#define sk_cookie __sk_common.skc_cookie
+#define sk_incoming_cpu __sk_common.skc_incoming_cpu
+#define sk_flags __sk_common.skc_flags
+#define sk_rxhash __sk_common.skc_rxhash
+  // unknow
+};
 
-extern int kfunc_def(tracepoint_probe_register)(struct tracepoint* tp, void* probe, void* data);
-static inline int tracepoint_probe_register(struct tracepoint* tp, void* probe, void* data) {
-  kfunc_call(tracepoint_probe_register, tp, probe, data);
-  kfunc_not_found();
-  return -ESRCH;
-}
+// linux/skbuff.h
+typedef s64 ktime_t;
+struct sk_buff {
+  union {
+    struct {
+      struct sk_buff* next;
+      struct sk_buff* prev;
+      union {
+        struct net_device* dev;
+        unsigned long dev_scratch;
+      };
+    };
+    struct rb_node rbnode;
+    struct list_head list;
+  };
+  union {
+    struct sock* sk;
+    int ip_defrag_offset;
+  };
+  union {
+    ktime_t tstamp;
+    u64 skb_mstamp_ns;
+  };
+  char cb[48] __aligned(8);
+  union {
+    struct {
+      unsigned long _skb_refdst;
+      void (*destructor)(struct sk_buff* skb);
+    };
+    struct list_head tcp_tsorted_anchor;
+  };
+  // unknow
+};
 
-extern int kfunc_def(tracepoint_probe_unregister)(struct tracepoint* tp, void* probe, void* data);
-static inline int tracepoint_probe_unregister(struct tracepoint* tp, void* probe, void* data) {
-  kfunc_call(tracepoint_probe_unregister, tp, probe, data);
-  kfunc_not_found();
-  return -ESRCH;
-}
-
-extern void kfunc_def(kfree)(const void* objp);
-static inline void kfree(const void* objp) {
-  kfunc_call_void(kfree, objp);
-}
-
-#endif /* __RE_UTILS_H */
+#endif /* __RE_KERNEL_H */
